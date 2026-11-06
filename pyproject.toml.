@@ -7,3 +7,6 @@ dependencies = [
     "uvicorn",
     "pandas"
 ]
+
+[tool.vercel]
+entrypoint = "api:app"
