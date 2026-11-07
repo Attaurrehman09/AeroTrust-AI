@@ -36,3 +36,64 @@ def flight_risk(request: FlightRiskRequest):
 def get_inspections():
     agent = AeroTrustAgent()
     return agent.inspections.to_dict(orient="records")
+
+
+class ChatRequest(BaseModel):
+    message: str
+    delay_minutes: int | None = None
+    weather: str | None = None
+    congestion: str | None = None
+
+
+@app.post("/chat")
+def chat(request: ChatRequest):
+    message = request.message.lower()
+
+    if any(word in message for word in [
+        "inspection", "equipment", "baggage",
+        "tractor", "gpu", "air conditioning"
+    ]):
+        agent = AeroTrustAgent()
+        records = agent.inspections.to_dict(orient="records")
+
+        review = [
+            item for item in records
+            if item["Status"] == "Review Required"
+        ]
+
+        return {
+            "reply": f"I checked {len(records)} equipment records. "
+                     f"{len(review)} require review.",
+            "inspections": records,
+            "review_required": review
+        }
+
+    if any(word in message for word in [
+        "flight", "delay", "risk", "weather", "congestion"
+    ]):
+        if (
+            request.delay_minutes is None
+            or request.weather is None
+            or request.congestion is None
+        ):
+            return {
+                "reply": "Please provide delay_minutes, weather, "
+                         "and congestion to calculate flight risk."
+            }
+
+        result = predict_flight_risk(
+            request.delay_minutes,
+            request.weather,
+            request.congestion
+        )
+
+        return {
+            "reply": f"Flight risk is {result['risk_level']} "
+                     f"with a score of {result['risk_score']}.",
+            "risk_analysis": result
+        }
+
+    return {
+        "reply": "I am AeroTrust AI. I can help with flight "
+                 "risk predictions and equipment inspections."
+    }
