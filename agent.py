@@ -4,6 +4,7 @@ import pandas as pd
 class AeroTrustAgent:
 
     def __init__(self):
+
         self.inspections = pd.DataFrame({
             "Equipment": [
                 "Ground Power Unit",
@@ -27,58 +28,104 @@ class AeroTrustAgent:
 
     def investigate_equipment(self, equipment_name):
 
-        # Find the requested equipment
+        name = equipment_name.strip().lower()
+
         result = self.inspections[
-            self.inspections["Equipment"].str.lower()
-            == equipment_name.lower()
+            self.inspections["Equipment"].str.lower() == name
         ]
 
         if result.empty:
             return {
                 "found": False,
-                "message": "Equipment record not found."
+                "message": "Equipment record not found. "
+                           "Check the equipment name."
             }
 
         record = result.iloc[0]
 
+        equipment = record["Equipment"]
         inspection = record["Inspection"]
         status = record["Status"]
 
-        # Analyze the inspection record
         if inspection == "Expired":
 
+            risk_level = "HIGH"
+            priority = "Urgent review"
+
+            department = "Maintenance"
+
             recommendation = (
-                "Hold the equipment from use until an "
-                "authorized inspection and clearance are completed."
+                "Recommend restricting equipment use pending "
+                "an authorized inspection and clearance. "
+                "Notify the maintenance department."
             )
 
-            risk = "High priority review"
+            reason = "The recorded inspection has expired."
 
         elif inspection == "Missing Record":
 
+            risk_level = "CRITICAL"
+            priority = "Immediate documentation review"
+
+            department = "Maintenance and Compliance"
+
             recommendation = (
-                "Verify the inspection history and obtain "
-                "the required documentation before clearance."
+                "Recommend withholding operational clearance "
+                "until inspection history is verified and "
+                "required documentation is obtained."
             )
 
-            risk = "Documentation review required"
+            reason = (
+                "The available dataset contains no inspection record. "
+                "This does not establish the equipment's physical condition."
+            )
 
         else:
 
+            risk_level = "LOW"
+            priority = "Routine monitoring"
+
+            department = "Ground Operations"
+
             recommendation = (
                 "No inspection issue is recorded in this demo dataset. "
-                "Continue normal checks under approved procedures."
+                "Continue approved pre-use checks and routine monitoring."
             )
 
-            risk = "No alert in available record"
+            reason = "The recorded inspection is complete."
 
         return {
             "found": True,
-            "equipment": equipment_name,
+            "equipment": equipment,
             "inspection": inspection,
             "status": status,
-            "risk": risk,
-            "recommendation": recommendation
+            "risk_level": risk_level,
+            "priority": priority,
+            "responsible_department": department,
+            "reason": reason,
+            "recommendation": recommendation,
+            "requires_human_approval": True,
+            "decision_status": "Pending human review",
+            "demo": True
+        }
+
+    def get_equipment_overview(self):
+
+        total = len(self.inspections)
+
+        review = len(
+            self.inspections[
+                self.inspections["Status"] == "Review Required"
+            ]
+        )
+
+        ready = total - review
+
+        return {
+            "total_equipment": total,
+            "ready_records": ready,
+            "records_requiring_review": review,
+            "demo": True
         }
 
     def generate_report(self, equipment_name):
@@ -88,25 +135,37 @@ class AeroTrustAgent:
         if not result["found"]:
             return result["message"]
 
-        report = f"""
+        return f"""
 AEROTRUST AI
-EQUIPMENT INVESTIGATION REPORT
+AIRPORT EQUIPMENT INTELLIGENCE REPORT
 
 Equipment: {result['equipment']}
 
 Inspection: {result['inspection']}
 
-Current status: {result['status']}
+Recorded status: {result['status']}
 
-Review priority: {result['risk']}
+Risk level: {result['risk_level']}
+
+Priority: {result['priority']}
+
+Responsible department:
+{result['responsible_department']}
+
+Reason:
+{result['reason']}
 
 AI recommendation:
 {result['recommendation']}
 
-Note:
-This report is based on demonstration records.
-An authorized aviation operator must verify findings
-and approve operational decisions.
-"""
+Decision status:
+{result['decision_status']}
 
-        return report
+Human approval required: Yes
+
+IMPORTANT:
+This is a demonstration decision-support report.
+It does not authorize equipment operation or restriction.
+An authorized airport operator must verify findings
+and make the final operational decision.
+"""
